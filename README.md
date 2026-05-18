@@ -3,9 +3,11 @@
 A design-driven status line for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). One shell script, zero dependencies (besides `jq`), opinionated design framework.
 
 ```
-project(main) │ opus-4.6-1m │ ████░░░░░░ 42% $1.23 │ ████░░░░░░ 42% 4d
-╰─ Location ─╯ ╰── Model ──╯ ╰── Session Usage ────╯  ╰── User Usage ────╯
+project(feat/auth) │ sonnet-4.5 │ ████░░░░░░ 42% $1.23 │ ████████░░ 82% 1d 🔥
+╰─── Location ───╯ ╰── Model ──╯ ╰── Session Usage ────╯ ╰─── User Usage ────╯
 ```
+
+Project name is bold; non-default branch is green; non-default model is cyan; pace bar warms up as weekly consumption climbs and earns a 🔥 stamp past 80%. The boring defaults (main branch, plan-default model, fresh week) sit dim — your eye lands only on what's worth reacting to.
 
 ## Setup
 
@@ -54,17 +56,32 @@ Every field must pass three tests:
 
 Fields that fail: `session_id` (meaningless to humans), `total_tokens` (the bar already shows this), `lines_added/removed` (visually loud, not actionable), `total_duration_ms` (you have a clock).
 
+### Highlight Rules — Bright Earns Attention
+
+Earlier iterations colored everything that was instrumented. The problem: when nothing is dim, nothing pops. Color stops being signal and starts being decoration.
+
+This version inverts the rule. The default / boring state sits dim; only deviations get color.
+
+| Element | Dim (default) | Bright (deviation) |
+|---|---|---|
+| Project name | — | always bold (the anchor where you are) |
+| Branch | `main` / `master` clean | non-default branch (green); dirty tree (yellow) |
+| Model | matches `$CC_STATUSLINE_DEFAULT_MODEL` (default `opus`) | any other model (cyan) |
+| Pace bar | under pace (green) | on pace (yellow) → ahead of pace (orange) |
+
+Glance at the line: if everything is dim, you're on the rails. Color means look here.
+
 ### Two Usage Bars, One Visual Language
 
-Both bars use identical `█░` characters. The difference is what the color encodes:
+Both bars use identical `█░` characters and the same warm-up direction (cool = headroom, warm = burning through it). The difference is what fuels the temperature:
 
-**Session bar** — color = context fullness (threshold-based):
+**Session bar** — context fullness (threshold-based):
 - Green (<50%) → Yellow (50-70%) → Orange (70-90%) → Red (>90%)
 
-**User bar** — color = 7-day pace (delta-based):
-- Green (ahead ≥5%) → Yellow (on pace) → Orange (behind ≤-5%)
+**User bar** — 7-day pace (delta-based):
+- Green (behind ≤-5%) → Yellow (on pace) → Orange (ahead ≥5%)
 
-Same form, different semantics. When both are green, that's the best signal: plenty of context *and* strong subscription utilization.
+Same form, same direction, different semantics. When both are cool, you have plenty of context *and* plenty of weekly headroom. When both are warm, you're using what you paid for.
 
 ### Subscription as Investment, Not Budget
 
@@ -77,7 +94,7 @@ pace_delta = used_percentage - elapsed_percentage
 elapsed    = (window_total - time_remaining) / window_total × 100
 ```
 
-Ahead of pace (green) = getting your money's worth. Behind pace (orange) = under-utilizing. This is the opposite of the "budget anxiety" framing used by most rate limit tools.
+Earlier versions colored "ahead of pace" green to celebrate strong utilization. Lived-in use turned that into a friction: warm colors instinctively read as warnings, and fighting that instinct every glance is cognitive tax for no payoff. So the color rule was flipped to match popular psychology — ahead of pace = orange, behind = green — and a 🔥 easter egg was added past `$CC_STATUSLINE_EASTER_EGG_AT` (default 80%) as the quiet counter-signal: *that "scary" color is success.* Set `CC_STATUSLINE_EASTER_EGG=""` to disable, or pick your own stamp.
 
 ### 5-Hour Alert
 
@@ -91,7 +108,17 @@ No static "5h" label — that's a window name, not useful data. The countdown te
 
 ## Customization
 
-This is a shell script, not a framework. Fork it, edit it, make it yours. A few things worth knowing:
+This is a shell script, not a framework. Fork it, edit it, make it yours.
+
+Three env vars are honored out of the box:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `CC_STATUSLINE_DEFAULT_MODEL` | `opus` | substring match — models whose slug contains this string render dim |
+| `CC_STATUSLINE_EASTER_EGG` | `🔥` | stamp appended when 7d usage crosses the threshold; set to `""` to disable |
+| `CC_STATUSLINE_EASTER_EGG_AT` | `80` | integer percentage threshold for the stamp |
+
+A few internals worth knowing if you start hacking:
 
 - **Git cache**: Branch/dirty state is cached for 5 seconds to avoid blocking on large repos
 - **Dynamic assembly**: Sections join with `│` only when non-empty — no ghost separators
@@ -100,10 +127,12 @@ This is a shell script, not a framework. Fork it, edit it, make it yours. A few 
 
 ## Background
 
-This status line evolved through five iterations, each driven by a specific design problem:
+Each release is driven by a specific design problem, not feature accumulation:
 
-- **v1-v4**: Establishing the zone framework, field selection criteria, and visual encoding rules
-- **v5**: Adding `rate_limits` (new in Claude Code v2.1.80), reclassifying zones by scope (session vs. user), and the investment-framing pace bar
+- **v0.1.0** — Four-zone information architecture; pace-aware 7d bar with "ahead = green" investment framing
+- **v0.2.0** — Highlight inversion (bright = deviation, dim = default); pace colors flipped to match popular psychology; 🔥 easter egg added as the counter-signal that high consumption on a Max plan is success, not a warning
+
+See [`docs/roadmap.md`](docs/roadmap.md) for what's next.
 
 Full design rationale and iteration history: [Designing a Claude Code Status Line](https://dongzhenye.com/posts/claude-code-statusline) | [Rate Limits: An Investment, Not a Budget](https://dongzhenye.com/posts/claude-code-statusline-subscription-utilization)
 
