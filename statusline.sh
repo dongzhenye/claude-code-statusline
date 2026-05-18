@@ -68,8 +68,6 @@ ORANGE=$(printf '\033[38;5;202m')
 RED=$(printf '\033[38;5;196m')
 RESET=$(printf '\033[0m')
 
-# User Usage bar uses same █░ as Session bar, color encodes pace judgment
-
 SEP="${DIM} │ ${RESET}"
 
 # ---------------------------------------------------------------------------
@@ -218,7 +216,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Section 4: User Usage — 7d dual-layer bar + 5h alert
+# Section 4: User Usage — 7d pace bar + 5h alert
 # ---------------------------------------------------------------------------
 user_section=""
 
@@ -240,12 +238,8 @@ if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
     elapsed_pct=0
   fi
 
-  # Build dual-layer bar (10 characters)
-  # Each position uses ▀ with fg (top=actual) and bg (bottom=expected)
   actual_filled=$((seven_day_actual / 10))
   [ "$actual_filled" -gt 10 ] && actual_filled=10
-  expected_filled=$((elapsed_pct / 10))
-  [ "$expected_filled" -gt 10 ] && expected_filled=10
 
   pace_delta=$((seven_day_actual - elapsed_pct))
 

@@ -28,6 +28,6 @@ Driven by lived-in feedback after several weeks of daily use. The original desig
 Things noticed but not yet in flight. Promoted to a real phase when batchable.
 
 - Tiered easter egg (🔥 → 🚀 → 💎 across thresholds) — open question whether one-tier is enough
-- Optional dual-layer pace bar (top = actual, bottom = expected) using `▀` with fg/bg — `expected_filled` was wired up in Phase B but not rendered
+- Optional dual-layer pace bar (top = actual, bottom = expected) using `▀` with fg/bg — earlier draft started the wiring but reverted before merge; full implementation deferred to a real phase
 - `develop` / `trunk` as default-branch synonyms (currently only `main`/`master` get the dim treatment)
 - Width-aware truncation for very long project names or branch names
