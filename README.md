@@ -7,7 +7,7 @@ project(feat/auth) │ sonnet-4.5 │ ████░░░░░░ 42% $1.23 �
 ╰─── Location ───╯ ╰── Model ──╯ ╰── Session Usage ────╯ ╰─── User Usage ────╯
 ```
 
-Project name is bold; non-default branch is green; non-default model is cyan; pace bar warms up as weekly consumption climbs and earns a 🔥 stamp past 80%. The boring defaults (main branch, plan-default model, fresh week) sit dim — your eye lands only on what's worth reacting to.
+Project name and non-default model are bold; non-default branch is green; the pace bar warms up as weekly consumption climbs and earns a 🔥 stamp past 80%. The boring defaults (main branch, plan-default model, fresh week) sit dim — your eye lands only on what's worth reacting to.
 
 ## Setup
 
@@ -60,16 +60,28 @@ Fields that fail: `session_id` (meaningless to humans), `total_tokens` (the bar 
 
 Earlier iterations colored everything that was instrumented. The problem: when nothing is dim, nothing pops. Color stops being signal and starts being decoration.
 
-This version inverts the rule. The default / boring state sits dim; only deviations get color.
+This version inverts the rule. The default / boring state sits dim; only deviations get a visual nudge. And the palette is intentionally small and semantic — each token does one job:
 
-| Element | Dim (default) | Bright (deviation) |
+| Token | Meaning |
+|---|---|
+| **DIM** | Default / baseline — don't interrupt the eye |
+| **BOLD** | Identity anchor or deviation from default — look here |
+| **GREEN** | Clean / behind pace (cool, positive) |
+| **YELLOW** | Dirty / on pace (caution, in-progress) |
+| **ORANGE** | Ahead of pace / context 70-90% (warm) |
+| **RED** | Context >90% / 5h alert above 80% (hot) |
+
+Applied across the line:
+
+| Element | Default (dim) | Deviation (highlighted) |
 |---|---|---|
-| Project name | — | always bold (the anchor where you are) |
-| Branch | `main` / `master` clean | non-default branch (green); dirty tree (yellow) |
-| Model | matches `$CC_STATUSLINE_DEFAULT_MODEL` (default `opus`) | any other model (cyan) |
-| Pace bar | under pace (green) | on pace (yellow) → ahead of pace (orange) |
+| Project name | — | always BOLD (the anchor where you are) |
+| Branch | `main` / `master` clean | non-default → GREEN; dirty tree → YELLOW |
+| Model | matches `$CC_STATUSLINE_DEFAULT_MODEL` (default `opus`) | any other model → BOLD (same "deviation matters" semantic) |
+| Session bar | <50% → GREEN (cool) | 50→70→90% → YELLOW→ORANGE→RED |
+| Pace bar | behind pace → GREEN | on pace → YELLOW → ahead → ORANGE |
 
-Glance at the line: if everything is dim, you're on the rails. Color means look here.
+Glance at the line: if everything is dim, you're on the rails. Color or weight means look here.
 
 ### Two Usage Bars, One Visual Language
 

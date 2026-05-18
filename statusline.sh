@@ -8,11 +8,21 @@
 #   Session Usage — context bar + cost (same scope, no separator)
 #   User Usage    — 7d pace bar + 5h alert (conditional)
 #
-# Highlight rules — bright = "warrants attention", dim = "default / boring":
-#   Project name: bold (your anchor)
-#   Branch:       main/master clean = dim; other branches = green; dirty = yellow
-#   Model:        matches $CC_STATUSLINE_DEFAULT_MODEL (default "opus") = dim; else cyan
-#   Pace bar:     high consumption = orange (matches popular "warning" reading,
+# Highlight rules — defaults stay dim so anomalies pop. Color palette is
+# semantic and small: each token has one job.
+#   DIM    — default / baseline (don't interrupt the eye)
+#   BOLD   — identity anchor or deviation from default (look here)
+#   GREEN  — clean / behind pace (cool, positive)
+#   YELLOW — dirty / on pace (caution)
+#   ORANGE — ahead of pace / context 70-90% (warm)
+#   RED    — context >90% / 5h alert above 80% (hot)
+#
+# Applied:
+#   Project name: BOLD (your anchor)
+#   Branch:       main/master clean = DIM; other branches = GREEN; dirty = YELLOW
+#   Model:        matches $CC_STATUSLINE_DEFAULT_MODEL (default "opus") = DIM;
+#                 anything else = BOLD (same "deviation matters" semantic as project)
+#   Pace bar:     high consumption = ORANGE (matches popular "warning" reading,
 #                 even though high consumption on a Max plan is what we want)
 #
 # Easter egg: when seven-day usage crosses $CC_STATUSLINE_EASTER_EGG_AT (default 80%),
@@ -56,7 +66,6 @@ GREEN=$(printf '\033[32m')
 YELLOW=$(printf '\033[33m')
 ORANGE=$(printf '\033[38;5;202m')
 RED=$(printf '\033[38;5;196m')
-CYAN=$(printf '\033[36m')
 RESET=$(printf '\033[0m')
 
 # User Usage bar uses same █░ as Session bar, color encodes pace judgment
@@ -150,11 +159,12 @@ model_slug=$(printf '%s' "$model_display" \
   | sed 's/[()]//g' \
   | tr ' ' '-')
 
-# Default model is dim (you're on plan baseline); non-default is highlighted
+# Default model is dim (you're on plan baseline); non-default uses BOLD,
+# same "deviation worth noting" semantic as the project name anchor
 default_model_pattern="${CC_STATUSLINE_DEFAULT_MODEL:-opus}"
 case "$model_slug" in
   *"$default_model_pattern"*) model_section="${DIM}${model_slug}${RESET}" ;;
-  *) model_section="${CYAN}${model_slug}${RESET}" ;;
+  *) model_section="${BOLD}${model_slug}${RESET}" ;;
 esac
 
 # ---------------------------------------------------------------------------
