@@ -1,12 +1,14 @@
 #!/bin/sh
 # Claude Code status line (v5)
-# https://github.com/dongzhenye/claude-code-statusline
 #
 # Four zones, ordered by scope and urgency:
 #   Location      — dir(branch)
 #   Model         — opus-4.6-1m
-#   Session Usage — context bar + cost
-#   User Usage    — 7d pace bar + 5h alert (conditional)
+#   Session Usage — context bar + cost (same scope, no separator)
+#   User Usage    — 7d dual-layer pace bar + 5h alert (conditional)
+#
+# The 7d bar color encodes pace judgment (same scheme as Session bar):
+#   ahead of pace (over-consuming) = orange, on pace = yellow, behind (headroom) = green
 #
 # Git results are cached in /tmp/claude-statusline-git-cache for 5 seconds.
 
@@ -46,10 +48,12 @@ RED=$(printf '\033[38;5;196m')
 CYAN=$(printf '\033[36m')
 RESET=$(printf '\033[0m')
 
+# User Usage bar uses same █░ as Session bar, color encodes pace judgment
+
 SEP="${DIM} │ ${RESET}"
 
 # ---------------------------------------------------------------------------
-# Zone 1: Location — dir(branch)
+# Section 1a: Git info (with 5-second cache)
 # ---------------------------------------------------------------------------
 
 CACHE_FILE="/tmp/claude-statusline-git-cache"
@@ -94,6 +98,9 @@ if [ -n "$git_dir" ]; then
   fi
 fi
 
+# ---------------------------------------------------------------------------
+# Section 1b: Location — dir(branch)
+# ---------------------------------------------------------------------------
 dir_name=""
 case "$cwd" in
   "$HOME"|"$HOME"/|"") ;;
@@ -120,7 +127,7 @@ elif [ -n "$branch" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Zone 2: Model name
+# Section 2: Model name
 # ---------------------------------------------------------------------------
 model_slug=$(printf '%s' "$model_display" \
   | tr '[:upper:]' '[:lower:]' \
@@ -132,10 +139,11 @@ model_slug=$(printf '%s' "$model_display" \
 model_section="${CYAN}${model_slug}${RESET}"
 
 # ---------------------------------------------------------------------------
-# Zone 3: Session Usage — context bar + cost (no separator between them)
+# Section 3: Session Usage — context bar + cost (no separator between them)
 # ---------------------------------------------------------------------------
 session_section=""
 
+# Context progress bar
 if [ "$used_pct_raw" != "null" ] && [ -n "$used_pct_raw" ]; then
   used_int=$(printf '%.0f' "$used_pct_raw")
 
@@ -143,6 +151,7 @@ if [ "$used_pct_raw" != "null" ] && [ -n "$used_pct_raw" ]; then
   [ "$filled" -gt 10 ] && filled=10
   empty=$((10 - filled))
 
+  # Color threshold for filled blocks
   if [ "$used_int" -ge 90 ]; then
     bar_color="$RED"
   elif [ "$used_int" -ge 70 ]; then
@@ -153,6 +162,7 @@ if [ "$used_pct_raw" != "null" ] && [ -n "$used_pct_raw" ]; then
     bar_color="$GREEN"
   fi
 
+  # Build bar: colored █ for filled, dim ░ for empty (matches User bar empty)
   bar=""
   i=0
   while [ $i -lt "$filled" ]; do
@@ -168,6 +178,7 @@ if [ "$used_pct_raw" != "null" ] && [ -n "$used_pct_raw" ]; then
   session_section="${bar} ${bar_color}${used_int}%${RESET}"
 fi
 
+# Cost (dim, appended to session section with a space)
 cost=$(printf '%.2f' "$cost_usd")
 cost_part="${DIM}\$${cost}${RESET}"
 
@@ -178,19 +189,20 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Zone 4: User Usage — 7d pace bar + 5h alert
+# Section 4: User Usage — 7d dual-layer bar + 5h alert
 # ---------------------------------------------------------------------------
 user_section=""
 
 if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
   now=$(date +%s)
 
+  # Calculate elapsed percentage of the 7-day window
   seven_day_actual=$(printf '%.0f' "$seven_day_pct")
   if [ "$seven_day_resets" != "null" ] && [ -n "$seven_day_resets" ]; then
     resets_int=$(printf '%.0f' "$seven_day_resets")
     remaining=$((resets_int - now))
     [ "$remaining" -lt 0 ] && remaining=0
-    window_total=$((7 * 24 * 3600))
+    window_total=$((7 * 24 * 3600))  # 604800 seconds
     elapsed=$((window_total - remaining))
     [ "$elapsed" -lt 0 ] && elapsed=0
     [ "$elapsed" -gt "$window_total" ] && elapsed=$window_total
@@ -199,19 +211,26 @@ if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
     elapsed_pct=0
   fi
 
+  # Build dual-layer bar (10 characters)
+  # Each position uses ▀ with fg (top=actual) and bg (bottom=expected)
   actual_filled=$((seven_day_actual / 10))
   [ "$actual_filled" -gt 10 ] && actual_filled=10
+  expected_filled=$((elapsed_pct / 10))
+  [ "$expected_filled" -gt 10 ] && expected_filled=10
 
   pace_delta=$((seven_day_actual - elapsed_pct))
 
+  # Pace color: aligned with Session bar — burning faster than expected = warmer color
+  # ahead of pace (over-consuming) → orange; behind pace (headroom) → green
   if [ "$pace_delta" -ge 5 ]; then
-    pace_color="$GREEN"
+    pace_color="$ORANGE"
   elif [ "$pace_delta" -ge -5 ]; then
     pace_color="$YELLOW"
   else
-    pace_color="$ORANGE"
+    pace_color="$GREEN"
   fi
 
+  # Build bar: same █░ as Session bar, color = pace judgment
   user_bar=""
   i=0
   while [ $i -lt "$actual_filled" ]; do
@@ -225,6 +244,7 @@ if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
     i=$((i + 1))
   done
 
+  # 7d reset countdown
   countdown_7d=""
   if [ "$seven_day_resets" != "null" ] && [ -n "$seven_day_resets" ]; then
     remaining_min_7d=$((remaining / 60))
@@ -237,6 +257,7 @@ if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
     fi
   fi
 
+  # Assemble: bar + percentage + countdown
   user_section="${user_bar} ${pace_color}${seven_day_actual}%${RESET}"
   if [ -n "$countdown_7d" ]; then
     user_section="${user_section} ${DIM}${countdown_7d}${RESET}"
@@ -247,6 +268,7 @@ fi
 if [ "$five_hour_pct" != "null" ] && [ -n "$five_hour_pct" ]; then
   five_hour_int=$(printf '%.0f' "$five_hour_pct")
   if [ "$five_hour_int" -gt 80 ]; then
+    # Calculate countdown to reset
     countdown_str=""
     if [ "$five_hour_resets" != "null" ] && [ -n "$five_hour_resets" ]; then
       resets_5h=$(printf '%.0f' "$five_hour_resets")
@@ -279,7 +301,7 @@ if [ "$five_hour_pct" != "null" ] && [ -n "$five_hour_pct" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Assemble — join non-empty sections with separator
+# Assemble output — join only non-empty sections with separator
 # ---------------------------------------------------------------------------
 output=""
 for section in "$location_section" "$model_section" "$session_section" "$user_section"; do
