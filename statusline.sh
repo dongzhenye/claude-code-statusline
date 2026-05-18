@@ -1,12 +1,34 @@
 #!/bin/sh
-# Claude Code status line (v5)
+# Claude Code status line
 # https://github.com/dongzhenye/claude-code-statusline
 #
 # Four zones, ordered by scope and urgency:
 #   Location      — dir(branch)
 #   Model         — opus-4.6-1m
-#   Session Usage — context bar + cost
+#   Session Usage — context bar + cost (same scope, no separator)
 #   User Usage    — 7d pace bar + 5h alert (conditional)
+#
+# Highlight rules — defaults stay dim so anomalies pop. Color palette is
+# semantic and small: each token has one job.
+#   DIM    — default / baseline (don't interrupt the eye)
+#   BOLD   — identity anchor or deviation from default (look here)
+#   GREEN  — clean / behind pace (cool, positive)
+#   YELLOW — dirty / on pace (caution)
+#   ORANGE — ahead of pace / context 70-90% (warm)
+#   RED    — context >90% / 5h alert above 80% (hot)
+#
+# Applied:
+#   Project name: BOLD (your anchor)
+#   Branch:       main/master clean = DIM; other branches = GREEN; dirty = YELLOW
+#   Model:        matches $CC_STATUSLINE_DEFAULT_MODEL (default "opus") = DIM;
+#                 anything else = BOLD (same "deviation matters" semantic as project)
+#   Pace bar:     high consumption = ORANGE (matches popular "warning" reading,
+#                 even though high consumption on a Max plan is what we want)
+#
+# Easter egg: when seven-day usage crosses $CC_STATUSLINE_EASTER_EGG_AT (default 80%),
+# a symbol ($CC_STATUSLINE_EASTER_EGG, default 🔥) is appended to the user bar — a
+# quiet reminder that the "scary" color is actually you getting your money's worth.
+# Set $CC_STATUSLINE_EASTER_EGG="" to disable.
 #
 # Git results are cached in /tmp/claude-statusline-git-cache for 5 seconds.
 
@@ -39,17 +61,17 @@ five_hour_resets=$(printf '%s\n' "$parsed" | sed -n '8p')
 # ANSI color helpers
 # ---------------------------------------------------------------------------
 DIM=$(printf '\033[2m')
+BOLD=$(printf '\033[1m')
 GREEN=$(printf '\033[32m')
 YELLOW=$(printf '\033[33m')
 ORANGE=$(printf '\033[38;5;202m')
 RED=$(printf '\033[38;5;196m')
-CYAN=$(printf '\033[36m')
 RESET=$(printf '\033[0m')
 
 SEP="${DIM} │ ${RESET}"
 
 # ---------------------------------------------------------------------------
-# Zone 1: Location — dir(branch)
+# Section 1a: Git info (with 5-second cache)
 # ---------------------------------------------------------------------------
 
 CACHE_FILE="/tmp/claude-statusline-git-cache"
@@ -94,33 +116,39 @@ if [ -n "$git_dir" ]; then
   fi
 fi
 
+# ---------------------------------------------------------------------------
+# Section 1b: Location — dir(branch)
+# ---------------------------------------------------------------------------
 dir_name=""
 case "$cwd" in
   "$HOME"|"$HOME"/|"") ;;
   *) dir_name=$(basename "$cwd") ;;
 esac
 
+# Branch color: dirty wins; otherwise main/master is dim (default), others green
+branch_color=""
+if [ -n "$branch" ]; then
+  if [ "$dirty" = "1" ]; then
+    branch_color="$YELLOW"
+  else
+    case "$branch" in
+      main|master) branch_color="$DIM" ;;
+      *) branch_color="$GREEN" ;;
+    esac
+  fi
+fi
+
 location_section=""
 if [ -n "$dir_name" ] && [ -n "$branch" ]; then
-  if [ "$dirty" = "1" ]; then
-    branch_color="$YELLOW"
-  else
-    branch_color="$GREEN"
-  fi
-  location_section="${dir_name}${DIM}(${RESET}${branch_color}${branch}${RESET}${DIM})${RESET}"
+  location_section="${BOLD}${dir_name}${RESET}${DIM}(${RESET}${branch_color}${branch}${RESET}${DIM})${RESET}"
 elif [ -n "$dir_name" ]; then
-  location_section="$dir_name"
+  location_section="${BOLD}${dir_name}${RESET}"
 elif [ -n "$branch" ]; then
-  if [ "$dirty" = "1" ]; then
-    branch_color="$YELLOW"
-  else
-    branch_color="$GREEN"
-  fi
   location_section="${branch_color}${branch}${RESET}"
 fi
 
 # ---------------------------------------------------------------------------
-# Zone 2: Model name
+# Section 2: Model name
 # ---------------------------------------------------------------------------
 model_slug=$(printf '%s' "$model_display" \
   | tr '[:upper:]' '[:lower:]' \
@@ -129,13 +157,20 @@ model_slug=$(printf '%s' "$model_display" \
   | sed 's/[()]//g' \
   | tr ' ' '-')
 
-model_section="${CYAN}${model_slug}${RESET}"
+# Default model is dim (you're on plan baseline); non-default uses BOLD,
+# same "deviation worth noting" semantic as the project name anchor
+default_model_pattern="${CC_STATUSLINE_DEFAULT_MODEL:-opus}"
+case "$model_slug" in
+  *"$default_model_pattern"*) model_section="${DIM}${model_slug}${RESET}" ;;
+  *) model_section="${BOLD}${model_slug}${RESET}" ;;
+esac
 
 # ---------------------------------------------------------------------------
-# Zone 3: Session Usage — context bar + cost (no separator between them)
+# Section 3: Session Usage — context bar + cost (no separator between them)
 # ---------------------------------------------------------------------------
 session_section=""
 
+# Context progress bar
 if [ "$used_pct_raw" != "null" ] && [ -n "$used_pct_raw" ]; then
   used_int=$(printf '%.0f' "$used_pct_raw")
 
@@ -143,6 +178,7 @@ if [ "$used_pct_raw" != "null" ] && [ -n "$used_pct_raw" ]; then
   [ "$filled" -gt 10 ] && filled=10
   empty=$((10 - filled))
 
+  # Color threshold for filled blocks
   if [ "$used_int" -ge 90 ]; then
     bar_color="$RED"
   elif [ "$used_int" -ge 70 ]; then
@@ -153,6 +189,7 @@ if [ "$used_pct_raw" != "null" ] && [ -n "$used_pct_raw" ]; then
     bar_color="$GREEN"
   fi
 
+  # Build bar: colored █ for filled, dim ░ for empty (matches User bar empty)
   bar=""
   i=0
   while [ $i -lt "$filled" ]; do
@@ -168,6 +205,7 @@ if [ "$used_pct_raw" != "null" ] && [ -n "$used_pct_raw" ]; then
   session_section="${bar} ${bar_color}${used_int}%${RESET}"
 fi
 
+# Cost (dim, appended to session section with a space)
 cost=$(printf '%.2f' "$cost_usd")
 cost_part="${DIM}\$${cost}${RESET}"
 
@@ -178,19 +216,20 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Zone 4: User Usage — 7d pace bar + 5h alert
+# Section 4: User Usage — 7d pace bar + 5h alert
 # ---------------------------------------------------------------------------
 user_section=""
 
 if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
   now=$(date +%s)
 
+  # Calculate elapsed percentage of the 7-day window
   seven_day_actual=$(printf '%.0f' "$seven_day_pct")
   if [ "$seven_day_resets" != "null" ] && [ -n "$seven_day_resets" ]; then
     resets_int=$(printf '%.0f' "$seven_day_resets")
     remaining=$((resets_int - now))
     [ "$remaining" -lt 0 ] && remaining=0
-    window_total=$((7 * 24 * 3600))
+    window_total=$((7 * 24 * 3600))  # 604800 seconds
     elapsed=$((window_total - remaining))
     [ "$elapsed" -lt 0 ] && elapsed=0
     [ "$elapsed" -gt "$window_total" ] && elapsed=$window_total
@@ -204,14 +243,17 @@ if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
 
   pace_delta=$((seven_day_actual - elapsed_pct))
 
+  # Pace color: aligned with Session bar — burning faster than expected = warmer color
+  # ahead of pace (over-consuming) → orange; behind pace (headroom) → green
   if [ "$pace_delta" -ge 5 ]; then
-    pace_color="$GREEN"
+    pace_color="$ORANGE"
   elif [ "$pace_delta" -ge -5 ]; then
     pace_color="$YELLOW"
   else
-    pace_color="$ORANGE"
+    pace_color="$GREEN"
   fi
 
+  # Build bar: same █░ as Session bar, color = pace judgment
   user_bar=""
   i=0
   while [ $i -lt "$actual_filled" ]; do
@@ -225,6 +267,7 @@ if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
     i=$((i + 1))
   done
 
+  # 7d reset countdown
   countdown_7d=""
   if [ "$seven_day_resets" != "null" ] && [ -n "$seven_day_resets" ]; then
     remaining_min_7d=$((remaining / 60))
@@ -237,9 +280,18 @@ if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
     fi
   fi
 
+  # Assemble: bar + percentage + countdown
   user_section="${user_bar} ${pace_color}${seven_day_actual}%${RESET}"
   if [ -n "$countdown_7d" ]; then
     user_section="${user_section} ${DIM}${countdown_7d}${RESET}"
+  fi
+
+  # Easter egg: a quiet "you're doing it right" stamp on heavy consumption.
+  # Set CC_STATUSLINE_EASTER_EGG="" to disable, or override symbol/threshold.
+  egg_symbol="${CC_STATUSLINE_EASTER_EGG-🔥}"
+  egg_threshold="${CC_STATUSLINE_EASTER_EGG_AT:-80}"
+  if [ -n "$egg_symbol" ] && [ "$seven_day_actual" -ge "$egg_threshold" ] 2>/dev/null; then
+    user_section="${user_section} ${egg_symbol}"
   fi
 fi
 
@@ -247,6 +299,7 @@ fi
 if [ "$five_hour_pct" != "null" ] && [ -n "$five_hour_pct" ]; then
   five_hour_int=$(printf '%.0f' "$five_hour_pct")
   if [ "$five_hour_int" -gt 80 ]; then
+    # Calculate countdown to reset
     countdown_str=""
     if [ "$five_hour_resets" != "null" ] && [ -n "$five_hour_resets" ]; then
       resets_5h=$(printf '%.0f' "$five_hour_resets")
@@ -279,7 +332,7 @@ if [ "$five_hour_pct" != "null" ] && [ -n "$five_hour_pct" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Assemble — join non-empty sections with separator
+# Assemble output — join only non-empty sections with separator
 # ---------------------------------------------------------------------------
 output=""
 for section in "$location_section" "$model_section" "$session_section" "$user_section"; do
