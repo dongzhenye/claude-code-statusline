@@ -1,14 +1,19 @@
 #!/bin/sh
-# Claude Code status line (v5)
+# Claude Code status line
+# https://github.com/dongzhenye/claude-code-statusline
 #
 # Four zones, ordered by scope and urgency:
 #   Location      — dir(branch)
 #   Model         — opus-4.6-1m
 #   Session Usage — context bar + cost (same scope, no separator)
-#   User Usage    — 7d dual-layer pace bar + 5h alert (conditional)
+#   User Usage    — 7d pace bar + 5h alert (conditional)
 #
-# The 7d bar color encodes pace judgment (same scheme as Session bar):
-#   ahead of pace (over-consuming) = orange, on pace = yellow, behind (headroom) = green
+# Highlight rules — bright = "warrants attention", dim = "default / boring":
+#   Project name: bold (your anchor)
+#   Branch:       main/master clean = dim; other branches = green; dirty = yellow
+#   Model:        matches $CC_STATUSLINE_DEFAULT_MODEL (default "opus") = dim; else cyan
+#   Pace bar:     high consumption = orange (matches popular "warning" reading,
+#                 even though high consumption on a Max plan is what we want)
 #
 # Git results are cached in /tmp/claude-statusline-git-cache for 5 seconds.
 
@@ -41,6 +46,7 @@ five_hour_resets=$(printf '%s\n' "$parsed" | sed -n '8p')
 # ANSI color helpers
 # ---------------------------------------------------------------------------
 DIM=$(printf '\033[2m')
+BOLD=$(printf '\033[1m')
 GREEN=$(printf '\033[32m')
 YELLOW=$(printf '\033[33m')
 ORANGE=$(printf '\033[38;5;202m')
@@ -107,22 +113,25 @@ case "$cwd" in
   *) dir_name=$(basename "$cwd") ;;
 esac
 
+# Branch color: dirty wins; otherwise main/master is dim (default), others green
+branch_color=""
+if [ -n "$branch" ]; then
+  if [ "$dirty" = "1" ]; then
+    branch_color="$YELLOW"
+  else
+    case "$branch" in
+      main|master) branch_color="$DIM" ;;
+      *) branch_color="$GREEN" ;;
+    esac
+  fi
+fi
+
 location_section=""
 if [ -n "$dir_name" ] && [ -n "$branch" ]; then
-  if [ "$dirty" = "1" ]; then
-    branch_color="$YELLOW"
-  else
-    branch_color="$GREEN"
-  fi
-  location_section="${dir_name}${DIM}(${RESET}${branch_color}${branch}${RESET}${DIM})${RESET}"
+  location_section="${BOLD}${dir_name}${RESET}${DIM}(${RESET}${branch_color}${branch}${RESET}${DIM})${RESET}"
 elif [ -n "$dir_name" ]; then
-  location_section="$dir_name"
+  location_section="${BOLD}${dir_name}${RESET}"
 elif [ -n "$branch" ]; then
-  if [ "$dirty" = "1" ]; then
-    branch_color="$YELLOW"
-  else
-    branch_color="$GREEN"
-  fi
   location_section="${branch_color}${branch}${RESET}"
 fi
 
@@ -136,7 +145,12 @@ model_slug=$(printf '%s' "$model_display" \
   | sed 's/[()]//g' \
   | tr ' ' '-')
 
-model_section="${CYAN}${model_slug}${RESET}"
+# Default model is dim (you're on plan baseline); non-default is highlighted
+default_model_pattern="${CC_STATUSLINE_DEFAULT_MODEL:-opus}"
+case "$model_slug" in
+  *"$default_model_pattern"*) model_section="${DIM}${model_slug}${RESET}" ;;
+  *) model_section="${CYAN}${model_slug}${RESET}" ;;
+esac
 
 # ---------------------------------------------------------------------------
 # Section 3: Session Usage — context bar + cost (no separator between them)
