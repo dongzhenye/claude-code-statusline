@@ -15,6 +15,11 @@
 #   Pace bar:     high consumption = orange (matches popular "warning" reading,
 #                 even though high consumption on a Max plan is what we want)
 #
+# Easter egg: when seven-day usage crosses $CC_STATUSLINE_EASTER_EGG_AT (default 80%),
+# a symbol ($CC_STATUSLINE_EASTER_EGG, default 🔥) is appended to the user bar — a
+# quiet reminder that the "scary" color is actually you getting your money's worth.
+# Set $CC_STATUSLINE_EASTER_EGG="" to disable.
+#
 # Git results are cached in /tmp/claude-statusline-git-cache for 5 seconds.
 
 # ---------------------------------------------------------------------------
@@ -275,6 +280,14 @@ if [ "$seven_day_pct" != "null" ] && [ -n "$seven_day_pct" ]; then
   user_section="${user_bar} ${pace_color}${seven_day_actual}%${RESET}"
   if [ -n "$countdown_7d" ]; then
     user_section="${user_section} ${DIM}${countdown_7d}${RESET}"
+  fi
+
+  # Easter egg: a quiet "you're doing it right" stamp on heavy consumption.
+  # Set CC_STATUSLINE_EASTER_EGG="" to disable, or override symbol/threshold.
+  egg_symbol="${CC_STATUSLINE_EASTER_EGG-🔥}"
+  egg_threshold="${CC_STATUSLINE_EASTER_EGG_AT:-80}"
+  if [ -n "$egg_symbol" ] && [ "$seven_day_actual" -ge "$egg_threshold" ] 2>/dev/null; then
+    user_section="${user_section} ${egg_symbol}"
   fi
 fi
 
