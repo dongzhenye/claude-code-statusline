@@ -80,8 +80,11 @@ Applied across the line:
 | Model | matches `$CC_STATUSLINE_DEFAULT_MODEL` (default `opus`) | any other model → BOLD (same "deviation matters" semantic) |
 | Session bar | <50% → GREEN (cool) | 50→70→90% → YELLOW→ORANGE→RED |
 | Pace bar | behind pace → GREEN | on pace → YELLOW → ahead → ORANGE |
+| Fast mode | off (no marker) | on → ORANGE+BOLD `↯FAST` after the model |
 
 Glance at the line: if everything is dim, you're on the rails. Color or weight means look here.
+
+The Fast-mode marker earns its loudness: [Fast mode](https://platform.claude.com/docs/en/build-with-claude/fast-mode) bills at roughly $30/$150 per Mtok — the same Opus underneath, trading a large cost premium for lower latency. Easy to leave on by accident, so the line flags it explicitly (`↯` mirrors Claude Code's own indicator). The model slug is unchanged, since the model itself hasn't.
 
 ### Two Usage Bars, One Visual Language
 
@@ -143,6 +146,7 @@ Each release is driven by a specific design problem, not feature accumulation:
 
 - **v0.1.0** — Four-zone information architecture; pace-aware 7d bar with "ahead = green" investment framing
 - **v0.2.0** — Highlight inversion (bright = deviation, dim = default); pace colors flipped to match popular psychology; 🔥 easter egg added as the counter-signal that high consumption on a Max plan is success, not a warning
+- **v0.3.0** — Fast-mode cost indicator: an ORANGE+BOLD `↯FAST` after the model when `/fast` is active, since Fast bills ~$30/$150 per Mtok yet leaves the model name unchanged
 
 See [`docs/roadmap.md`](docs/roadmap.md) for what's next.
 

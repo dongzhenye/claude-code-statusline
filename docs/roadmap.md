@@ -11,7 +11,7 @@ Phase letters track investment milestones; release tags track code contracts. Se
 - [x] Conditional 5h alert above 80%
 - [x] Public release: README, MIT license, blog post
 
-## Phase B — Highlight Rules & Pace Color Flip (will release as v0.2.0)
+## Phase B — Highlight Rules & Pace Color Flip ✅ (released as v0.2.0, 2026-05-18)
 
 Driven by lived-in feedback after several weeks of daily use. The original design colored everything that was instrumented; the eye then has nothing to land on. This phase makes "default / boring" the dim baseline so highlighted things actually signal something.
 
@@ -21,7 +21,16 @@ Driven by lived-in feedback after several weeks of daily use. The original desig
 - [x] Pace bar colors flipped: high consumption = orange (matches popular "warning" reading, even though high consumption on Max is the goal)
 - [x] Heavy-consumption easter egg 🔥 (env-configurable symbol + threshold) — counter-signal to the inverted color
 - [x] README rewritten to reflect new color semantics
-- [ ] Tag v0.2.0 + GitHub release
+- [x] Tag v0.2.0 + GitHub release
+
+## Phase C — Fast-Mode Cost Indicator ✅ (released as v0.3.0, 2026-05-22)
+
+Fast mode (toggled via `/fast`) runs the same Opus but bills at ~$30/$150 per Mtok — easy to leave on by accident. The status line was blind to it: `model.id` / `display_name` are identical whether Fast is on or off, so the model zone rendered the same dim `opus-4.7-1m` either way. Claude Code 2.1.x exposes the state as a top-level `fast_mode` boolean in the status line JSON (confirmed empirically; undocumented as of 2026-05).
+
+- [x] Read `fast_mode` from status line JSON
+- [x] Append ORANGE+BOLD `↯FAST` after the model when active (matches CC's own `↯` indicator; "warm = warrants attention" semantic)
+- [x] README highlight table + Fast-mode rationale
+- [x] Tag v0.3.0 + GitHub release
 
 ## Backlog (next phase TBD)
 

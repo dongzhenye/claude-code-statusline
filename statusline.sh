@@ -24,6 +24,9 @@
 #                 anything else = BOLD (same "deviation matters" semantic as project)
 #   Pace bar:     high consumption = ORANGE (matches popular "warning" reading,
 #                 even though high consumption on a Max plan is what we want)
+#   Fast mode:    fast_mode=true appends ORANGE+BOLD "↯FAST" after the model —
+#                 it bills ~$30/$150 per Mtok, an expensive intentional deviation
+#                 worth flagging (same Opus underneath, so the slug is unchanged)
 #
 # Easter egg: when seven-day usage crosses $CC_STATUSLINE_EASTER_EGG_AT (default 80%),
 # a symbol ($CC_STATUSLINE_EASTER_EGG, default 🔥) is appended to the user bar — a
@@ -45,7 +48,8 @@ parsed=$(printf '%s' "$input" | jq -r '
   ((.rate_limits.seven_day.used_percentage // "null") | tostring),
   ((.rate_limits.seven_day.resets_at // "null") | tostring),
   ((.rate_limits.five_hour.used_percentage // "null") | tostring),
-  ((.rate_limits.five_hour.resets_at // "null") | tostring)
+  ((.rate_limits.five_hour.resets_at // "null") | tostring),
+  ((.fast_mode // false) | tostring)
 ')
 
 cwd=$(printf '%s\n' "$parsed" | sed -n '1p')
@@ -56,6 +60,7 @@ seven_day_pct=$(printf '%s\n' "$parsed" | sed -n '5p')
 seven_day_resets=$(printf '%s\n' "$parsed" | sed -n '6p')
 five_hour_pct=$(printf '%s\n' "$parsed" | sed -n '7p')
 five_hour_resets=$(printf '%s\n' "$parsed" | sed -n '8p')
+fast_mode=$(printf '%s\n' "$parsed" | sed -n '9p')
 
 # ---------------------------------------------------------------------------
 # ANSI color helpers
@@ -164,6 +169,14 @@ case "$model_slug" in
   *"$default_model_pattern"*) model_section="${DIM}${model_slug}${RESET}" ;;
   *) model_section="${BOLD}${model_slug}${RESET}" ;;
 esac
+
+# Fast mode bills at ~$30/$150 per Mtok — an expensive, intentional deviation.
+# Flag it loudly right after the model: ORANGE+BOLD "↯FAST" matches CC's own ↯
+# indicator and the "warm = warrants attention" semantic. Same Opus underneath,
+# so the slug stays as-is; the warning rides alongside it.
+if [ "$fast_mode" = "true" ]; then
+  model_section="${model_section} ${ORANGE}${BOLD}↯FAST${RESET}"
+fi
 
 # ---------------------------------------------------------------------------
 # Section 3: Session Usage — context bar + cost (no separator between them)
