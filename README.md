@@ -146,6 +146,7 @@ Each release is driven by a specific design problem, not feature accumulation:
 
 - **v0.1.0** — Four-zone information architecture; pace-aware 7d bar with "ahead = green" investment framing
 - **v0.2.0** — Highlight inversion (bright = deviation, dim = default); pace colors flipped to match popular psychology; 🔥 easter egg added as the counter-signal that high consumption on a Max plan is success, not a warning
+- **v0.3.0** — Fast-mode cost indicator: an ORANGE+BOLD `↯FAST` after the model when `/fast` is active, since Fast bills ~$30/$150 per Mtok yet leaves the model name unchanged
 
 See [`docs/roadmap.md`](docs/roadmap.md) for what's next.
 
