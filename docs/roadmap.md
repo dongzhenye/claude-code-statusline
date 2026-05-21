@@ -23,6 +23,15 @@ Driven by lived-in feedback after several weeks of daily use. The original desig
 - [x] README rewritten to reflect new color semantics
 - [ ] Tag v0.2.0 + GitHub release
 
+## Phase C — Fast-Mode Cost Indicator (will release as v0.3.0)
+
+Fast mode (toggled via `/fast`) runs the same Opus but bills at ~$30/$150 per Mtok — easy to leave on by accident. The status line was blind to it: `model.id` / `display_name` are identical whether Fast is on or off, so the model zone rendered the same dim `opus-4.7-1m` either way. Claude Code 2.1.x exposes the state as a top-level `fast_mode` boolean in the status line JSON (confirmed empirically; undocumented as of 2026-05).
+
+- [x] Read `fast_mode` from status line JSON
+- [x] Append ORANGE+BOLD `↯FAST` after the model when active (matches CC's own `↯` indicator; "warm = warrants attention" semantic)
+- [x] README highlight table + Fast-mode rationale
+- [ ] Tag v0.3.0 + GitHub release
+
 ## Backlog (next phase TBD)
 
 Things noticed but not yet in flight. Promoted to a real phase when batchable.
